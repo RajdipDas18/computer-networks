@@ -1,93 +1,150 @@
+"""
+Simulation of the Slotted ALOHA protocol.
+
+This program simulates Slotted ALOHA for different contention window
+sizes and evaluates the slot efficiency as the number of nodes increases.
+"""
+
 import random
 import matplotlib.pyplot as plt
 
-# Total number of time slots for simulation
-TSLOTS = 100000
+# ---------------------------------------------------------------------
+# Simulation Parameters
+# ---------------------------------------------------------------------
 
-# Optional: Use a fixed seed for reproducible results
-random.seed(42)
+TOTAL_SLOTS = 100_000
+MAX_NODES = 32
+WINDOW_SIZES = (8, 16, 32)
+RANDOM_SEED = 42
+
+# Fixed seed for reproducible results
+random.seed(RANDOM_SEED)
 
 
 class Node:
-    def __init__(self, window):
-        self.window = window
-        # Random initial backoff timer
-        self.timer = random.randint(0, window - 1)
+    """
+    Represents a node participating in the Slotted ALOHA protocol.
+    Each node maintains a random backoff timer.
+    """
 
-    def tick(self):
-        # Decrease the timer by one slot
+    def __init__(self, window_size: int) -> None:
+        self.window_size = window_size
+        self.timer = random.randint(0, window_size - 1)
+
+    def tick(self) -> None:
+        """
+        Decrease the backoff timer by one time slot.
+        """
         if self.timer > 0:
             self.timer -= 1
 
-    def backoff(self):
-        # Choose a new random backoff after success or collision
-        self.timer = random.randint(0, self.window - 1)
+    def reset_backoff(self) -> None:
+        """
+        Assign a new random backoff timer after a
+        successful transmission or a collision.
+        """
+        self.timer = random.randint(0, self.window_size - 1)
 
 
-def simulate(window, max_nodes):
+def simulate(window_size: int, max_nodes: int) -> tuple[list[int], list[float]]:
     """
-    Simulate Slotted ALOHA for a given contention window.
-    Returns lists of node counts and efficiencies.
+    Simulate the Slotted ALOHA protocol.
+
+    Parameters
+    ----------
+    window_size : int
+        Contention window size.
+    max_nodes : int
+        Maximum number of nodes to simulate.
+
+    Returns
+    -------
+    tuple[list[int], list[float]]
+        Lists containing the number of nodes and their corresponding
+        slot efficiencies.
     """
 
-    nodes_list = []
-    efficiency_list = []
+    node_counts = []
+    efficiencies = []
 
-    print(f"\nWindow Size = {window}")
+    print(f"\n{'=' * 55}")
+    print(f"Simulation for Contention Window = {window_size}")
+    print(f"{'=' * 55}")
 
-    for N in range(1, max_nodes + 1):
+    for node_count in range(1, max_nodes + 1):
 
-        # Create N nodes
-        nodes = [Node(window) for _ in range(N)]
-        successful = 0
+        nodes = [Node(window_size) for _ in range(node_count)]
+        successful_transmissions = 0
 
-        # Simulate all time slots
-        for _ in range(TSLOTS):
+        for _ in range(TOTAL_SLOTS):
 
-            transmitters = []
+            ready_nodes = []
 
-            # Check which nodes are ready to transmit
-            for i in range(N):
-                if nodes[i].timer == 0:
-                    transmitters.append(i)
+            for index, node in enumerate(nodes):
+                if node.timer == 0:
+                    ready_nodes.append(index)
                 else:
-                    nodes[i].tick()
+                    node.tick()
 
-            # One transmitter -> Successful transmission
-            if len(transmitters) == 1:
-                successful += 1
-                nodes[transmitters[0]].backoff()
+            # Successful transmission
+            if len(ready_nodes) == 1:
+                successful_transmissions += 1
+                nodes[ready_nodes[0]].reset_backoff()
 
-            # More than one transmitter -> Collision
-            elif len(transmitters) > 1:
-                for i in transmitters:
-                    nodes[i].backoff()
+            # Collision
+            elif len(ready_nodes) > 1:
+                for index in ready_nodes:
+                    nodes[index].reset_backoff()
 
-        # Calculate slot efficiency
-        efficiency = successful / TSLOTS
+        efficiency = successful_transmissions / TOTAL_SLOTS
 
-        print(f"Nodes = {N:2d}   Efficiency = {efficiency:.4f}")
+        print(
+            f"Nodes: {node_count:2d} | "
+            f"Successful Slots: {successful_transmissions:6d} | "
+            f"Efficiency: {efficiency:.4f}"
+        )
 
-        nodes_list.append(N)
-        efficiency_list.append(efficiency)
+        node_counts.append(node_count)
+        efficiencies.append(efficiency)
 
-    return nodes_list, efficiency_list
+    return node_counts, efficiencies
 
 
-def main():
+def plot_results() -> None:
+    """
+    Run the simulation for each contention window
+    and display the efficiency graph.
+    """
 
-    windows = [8, 16, 32]
+    plt.figure(figsize=(9, 6))
 
-    for window in windows:
-        nodes, efficiency = simulate(window, 32)
-        plt.plot(nodes, efficiency, marker='o', label=f"W={window}")
+    for window_size in WINDOW_SIZES:
+        nodes, efficiencies = simulate(window_size, MAX_NODES)
 
-    plt.title("Simulation of Slotted ALOHA")
-    plt.xlabel("Number of Nodes")
-    plt.ylabel("Slot Efficiency")
-    plt.legend()
-    plt.grid(True)
+        plt.plot(
+            nodes,
+            efficiencies,
+            marker="o",
+            linewidth=2,
+            markersize=5,
+            label=f"Window = {window_size}",
+        )
+
+    plt.title("Simulation of Slotted ALOHA", fontsize=14)
+    plt.xlabel("Number of Nodes", fontsize=12)
+    plt.ylabel("Slot Efficiency", fontsize=12)
+
+    plt.xticks(range(1, MAX_NODES + 1, 2))
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(title="Contention Window")
+
+    plt.tight_layout()
     plt.show()
+
+
+def main() -> None:
+    """Program entry point."""
+    plot_results()
 
 
 if __name__ == "__main__":
