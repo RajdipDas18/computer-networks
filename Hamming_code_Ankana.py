@@ -1,68 +1,113 @@
-#Hamming_code
-#Ankana_dey
+"""
+Hamming Code Generator and Error Detector
 
-def get_parity_bits(m):
-    r = 0
-    while 2**r < m + r + 1:
-        r += 1
-    return r
+This program:
+1. Generates a Hamming code for a given binary data string.
+2. Detects a single-bit error in a received Hamming code.
+"""
 
-def insert_bits(data, r):
-    j = 0
-    k = 0
-    res = ""
+def calculate_parity_bits(data_length):
+    """Return the number of parity bits required."""
+    parity_bits = 0
+    while (2 ** parity_bits) < (data_length + parity_bits + 1):
+        parity_bits += 1
+    return parity_bits
 
-    for i in range(1, len(data) + r + 1):
-        if i == 2**j:
-            res += "0"
-            j += 1
+
+def insert_parity_bits(data, parity_bits):
+    """Insert placeholder parity bits into the data."""
+    result = []
+    data_index = 0
+
+    for position in range(1, len(data) + parity_bits + 1):
+        if position & (position - 1) == 0:  # Power of 2
+            result.append("0")
         else:
-            res += data[k]
-            k += 1
-    return res
+            result.append(data[data_index])
+            data_index += 1
 
-def set_parity(code, r):
+    return "".join(result)
+
+
+def generate_hamming_code(code, parity_bits):
+    """Calculate and set parity bits."""
     code = list(code)
 
-    for i in range(r):
-        pos = 2**i
-        val = 0
+    for i in range(parity_bits):
+        parity_position = 2 ** i
+        parity = 0
 
-        for j in range(1, len(code)+1):
-            if j & pos:
-                val ^= int(code[j-1])
+        for position in range(1, len(code) + 1):
+            if position & parity_position:
+                parity ^= int(code[position - 1])
 
-        code[pos-1] = str(val)
+        code[parity_position - 1] = str(parity)
 
     return "".join(code)
 
-def find_error(code, r):
-    error = 0
 
-    for i in range(r):
-        pos = 2**i
-        val = 0
+def detect_error(received_code, parity_bits):
+    """Return the position of a single-bit error (0 if no error)."""
+    error_position = 0
 
-        for j in range(1, len(code)+1):
-            if j & pos:
-                val ^= int(code[j-1])
+    for i in range(parity_bits):
+        parity_position = 2 ** i
+        parity = 0
 
-        error += val * pos
+        for position in range(1, len(received_code) + 1):
+            if position & parity_position:
+                parity ^= int(received_code[position - 1])
 
-    return error
+        error_position += parity * parity_position
 
-data = input("Enter data: ")
+    return error_position
 
-r = get_parity_bits(len(data))
-code = insert_bits(data, r)
-code = set_parity(code, r)
 
-print("Hamming Code:", code)
+def flip_bit(binary_string, position):
+    """Correct the erroneous bit."""
+    bits = list(binary_string)
+    index = position - 1
+    bits[index] = "1" if bits[index] == "0" else "0"
+    return "".join(bits)
 
-received = input("Enter received code: ")
-error = find_error(received, r)
 
-if error == 0:
-    print("No error")
-else:
-    print("Error at position:", error)
+def is_binary(binary_string):
+    """Check whether the input contains only 0s and 1s."""
+    return all(bit in "01" for bit in binary_string)
+
+
+def main():
+    data = input("Enter binary data: ").strip()
+
+    if not is_binary(data):
+        print("Error: Please enter only binary digits (0 and 1).")
+        return
+
+    parity_bits = calculate_parity_bits(len(data))
+    hamming_code = insert_parity_bits(data, parity_bits)
+    hamming_code = generate_hamming_code(hamming_code, parity_bits)
+
+    print("Generated Hamming Code:", hamming_code)
+
+    received = input("Enter received Hamming code: ").strip()
+
+    if not is_binary(received):
+        print("Error: Please enter only binary digits (0 and 1).")
+        return
+
+    if len(received) != len(hamming_code):
+        print("Error: Received code length does not match the generated Hamming code.")
+        return
+
+    error_position = detect_error(received, parity_bits)
+
+    if error_position == 0:
+        print("No error detected.")
+    else:
+        print(f"Error detected at position: {error_position}")
+        corrected_code = flip_bit(received, error_position)
+        print("Corrected Code:", corrected_code)
+
+
+if __name__ == "__main__":
+    main()
