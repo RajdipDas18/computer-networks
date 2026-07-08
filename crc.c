@@ -1,45 +1,69 @@
- #include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 
-int main() {
-    char data[30], divisor[10], temp[30], quotient[30], remainder[10];
-    int data_len, div_len, i, j;
+#define MAX_DATA 100
+#define MAX_DIVISOR 20
+
+int main(void)
+{
+    char data[MAX_DATA];
+    char divisor[MAX_DIVISOR];
+    char temp[MAX_DATA];
+    char codeword[MAX_DATA];
+    char remainder[MAX_DIVISOR];
+    char quotient[MAX_DATA];
+
+    int dataLen, divisorLen;
+    int i, j;
 
     printf("Enter Data: ");
-    scanf("%s", data);
+    scanf("%99s", data);
 
     printf("Enter Divisor: ");
-    scanf("%s", divisor);
+    scanf("%19s", divisor);
 
-    data_len = strlen(data);
-    div_len = strlen(divisor);
+    dataLen = strlen(data);
+    divisorLen = strlen(divisor);
 
+    /* Copy data to temporary array */
     strcpy(temp, data);
 
-    for (i = 0; i < div_len - 1; i++)
-        temp[data_len + i] = '0';
+    /* Append zeros */
+    for (i = 0; i < divisorLen - 1; i++)
+    {
+        temp[dataLen + i] = '0';
+    }
+    temp[dataLen + divisorLen - 1] = '\0';
 
-    temp[data_len + div_len - 1] = '\0';
-
-    for (i = 0; i < data_len; i++) {
+    /* Perform CRC Division */
+    for (i = 0; i < dataLen; i++)
+    {
         quotient[i] = temp[i];
 
-        if (temp[i] == '1') {
-            for (j = 0; j < div_len; j++) {
+        if (temp[i] == '1')
+        {
+            for (j = 0; j < divisorLen; j++)
+            {
                 temp[i + j] = (temp[i + j] == divisor[j]) ? '0' : '1';
             }
         }
     }
+    quotient[dataLen] = '\0';
 
-    for (i = 0; i < div_len - 1; i++)
-        remainder[i] = temp[data_len + i];
+    /* Extract remainder */
+    for (i = 0; i < divisorLen - 1; i++)
+    {
+        remainder[i] = temp[dataLen + i];
+    }
+    remainder[divisorLen - 1] = '\0';
 
-    remainder[i] = '\0';
+    /* Create codeword */
+    strcpy(codeword, data);
+    strcat(codeword, remainder);
 
-    printf("Remainder (CRC): %s\n", remainder);
-
-    strcat(data, remainder);
-    printf("Codeword: %s\n", data);
+    printf("\nQuotient : %s\n", quotient);
+    printf("CRC      : %s\n", remainder);
+    printf("Codeword : %s\n", codeword);
 
     return 0;
 }
