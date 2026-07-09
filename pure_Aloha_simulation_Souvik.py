@@ -1,94 +1,160 @@
-import random
+"""
+Pure ALOHA Network Simulation
+
+This program simulates the Pure ALOHA protocol and compares
+the simulated throughput with the theoretical throughput.
+
+Author: Your Name
+"""
+
 import math
+import random
 import matplotlib.pyplot as plt
 
 # -----------------------------
-# Pure ALOHA Simulation
+# Simulation Parameters
 # -----------------------------
 
-SIMULATION_TIME = 1000        # seconds
-PACKET_TIME = 1.0             # transmission time
-NUM_STATIONS = 20             # number of users
-MAX_BACKOFF = 5               # random retransmission delay
+SIMULATION_TIME = 1000        # Total simulation duration (seconds)
+PACKET_DURATION = 1.0         # Packet transmission time (seconds)
+NUM_STATIONS = 20             # Number of transmitting stations
 
-loads = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.2,1.4,1.6,1.8,2.0]
+OFFERED_LOADS = [
+    0.1, 0.2, 0.3, 0.4, 0.5,
+    0.6, 0.7, 0.8, 0.9, 1.0,
+    1.2, 1.4, 1.6, 1.8, 2.0
+]
 
-simulated_throughput = []
-theoretical_throughput = []
 
-for G in loads:
+def generate_packets(load):
+    """
+    Generate transmission events for all stations based on
+    the offered load.
+    """
+    packets = []
 
-    events = []
-
-    # Generate packets for every station
     for station in range(NUM_STATIONS):
 
-        t = random.expovariate(G / NUM_STATIONS)
+        current_time = random.expovariate(load / NUM_STATIONS)
 
-        while t < SIMULATION_TIME:
-            events.append({
+        while current_time < SIMULATION_TIME:
+
+            packets.append({
                 "station": station,
-                "start": t,
-                "end": t + PACKET_TIME,
+                "start": current_time,
+                "end": current_time + PACKET_DURATION,
                 "success": True
             })
 
-            t += random.expovariate(G / NUM_STATIONS)
+            current_time += random.expovariate(load / NUM_STATIONS)
 
-    # Sort packets according to transmission time
-    events.sort(key=lambda x: x["start"])
+    packets.sort(key=lambda packet: packet["start"])
 
-    # Collision Detection
-    for i in range(len(events)):
+    return packets
 
-        for j in range(i + 1, len(events)):
 
-            if events[j]["start"] >= events[i]["end"]:
+def detect_collisions(packets):
+    """
+    Detect collisions among all packets.
+    """
+
+    total_packets = len(packets)
+
+    for i in range(total_packets):
+
+        for j in range(i + 1, total_packets):
+
+            if packets[j]["start"] >= packets[i]["end"]:
                 break
 
-            # Collision occurs
-            events[i]["success"] = False
-            events[j]["success"] = False
+            packets[i]["success"] = False
+            packets[j]["success"] = False
 
-    successful = sum(1 for p in events if p["success"])
-    collided = len(events) - successful
 
-    throughput = successful * PACKET_TIME / SIMULATION_TIME
+def simulate_pure_aloha():
+    """
+    Run the Pure ALOHA simulation for different offered loads.
+    """
 
-    simulated_throughput.append(throughput)
-    theoretical_throughput.append(G * math.exp(-2 * G))
+    simulated_throughput = []
+    theoretical_throughput = []
 
-    print("-----------------------------------")
-    print(f"Load (G)            : {G:.2f}")
-    print(f"Packets Generated   : {len(events)}")
-    print(f"Successful Packets  : {successful}")
-    print(f"Collided Packets    : {collided}")
-    print(f"Throughput          : {throughput:.3f}")
-    print("-----------------------------------")
+    print("\n========== Pure ALOHA Simulation ==========\n")
 
-# -----------------------------
-# Plot Results
-# -----------------------------
+    for load in OFFERED_LOADS:
 
-plt.figure(figsize=(8,5))
+        packets = generate_packets(load)
 
-plt.plot(loads,
-         simulated_throughput,
-         'bo-',
-         linewidth=2,
-         label='Simulation')
+        detect_collisions(packets)
 
-plt.plot(loads,
-         theoretical_throughput,
-         'r--',
-         linewidth=2,
-         label='Theory (G*e^-2G)')
+        successful_packets = sum(
+            packet["success"] for packet in packets
+        )
 
-plt.xlabel("Offered Load (G)")
-plt.ylabel("Throughput (S)")
-plt.title("Pure ALOHA Simulation")
+        collided_packets = len(packets) - successful_packets
 
-plt.grid(True)
-plt.legend()
+        throughput = (
+            successful_packets * PACKET_DURATION
+        ) / SIMULATION_TIME
 
-plt.show()
+        simulated_throughput.append(throughput)
+
+        theoretical_throughput.append(
+            load * math.exp(-2 * load)
+        )
+
+        print("-" * 45)
+        print(f"Offered Load (G)      : {load:.2f}")
+        print(f"Generated Packets     : {len(packets)}")
+        print(f"Successful Packets    : {successful_packets}")
+        print(f"Collided Packets      : {collided_packets}")
+        print(f"Simulated Throughput  : {throughput:.4f}")
+        print("-" * 45)
+
+    return simulated_throughput, theoretical_throughput
+
+
+def plot_results(simulated, theoretical):
+    """
+    Plot simulated and theoretical throughput.
+    """
+
+    plt.figure(figsize=(9, 5))
+
+    plt.plot(
+        OFFERED_LOADS,
+        simulated,
+        "bo-",
+        linewidth=2,
+        markersize=6,
+        label="Simulation"
+    )
+
+    plt.plot(
+        OFFERED_LOADS,
+        theoretical,
+        "r--",
+        linewidth=2,
+        label="Theoretical (S = Ge⁻²ᴳ)"
+    )
+
+    plt.title("Pure ALOHA Throughput Analysis")
+    plt.xlabel("Offered Load (G)")
+    plt.ylabel("Throughput (S)")
+
+    plt.grid(True, linestyle="--", alpha=0.7)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def main():
+    """Program entry point."""
+
+    simulated, theoretical = simulate_pure_aloha()
+    plot_results(simulated, theoretical)
+
+
+if __name__ == "__main__":
+    main()
